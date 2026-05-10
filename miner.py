@@ -3,7 +3,6 @@ import time
 import hashlib
 import base64
 import json
-import re
 import os
 import google.generativeai as genai
 
@@ -57,37 +56,29 @@ h = hashlib.sha256(b"").hexdigest()
 return h[:6]
 
 def solve_base64(prompt):
-matches = re.findall(r"['"](.*?)['"]", prompt)
-
-```
-if not matches:
-    return None
-
 try:
-    return base64.b64decode(matches[0]).decode()
+text = prompt.split("'")[1]
+return base64.b64decode(text).decode()
 except:
-    return None
-```
+return None
 
 def solve_reverse(prompt):
-matches = re.findall(r"['"](.*?)['"]", prompt)
-
-```
-if not matches:
-    return None
-
-return matches[0][::-1]
-```
+try:
+text = prompt.split("'")[1]
+return text[::-1]
+except:
+return None
 
 def solve_math(prompt):
-expression = re.findall(r"([0-9+-*/() ]+)", prompt)
+try:
+expression = (
+prompt.replace("calculate", "")
+.replace("=", "")
+.strip()
+)
 
 ```
-if not expression:
-    return None
-
-try:
-    return str(eval(expression[0]))
+    return str(eval(expression))
 except:
     return None
 ```
@@ -142,13 +133,7 @@ elif "base64" in prompt_lower:
 elif "reverse" in prompt_lower:
     answer = solve_reverse(prompt)
 
-elif any(x in prompt_lower for x in [
-    "calculate",
-    "+",
-    "-",
-    "*",
-    "/"
-]):
+elif "calculate" in prompt_lower:
     answer = solve_math(prompt)
 
 if not answer:
@@ -223,4 +208,4 @@ data = get_puzzle()
 except Exception as e:
     print("[error]", e)
     time.sleep(15)
-
+```
