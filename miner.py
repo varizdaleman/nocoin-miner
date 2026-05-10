@@ -45,15 +45,30 @@ def save_cache(cache: dict) -> None:
 
 # ── Puzzle solvers ────────────────────────────────────────────────────────────
 
+def solve_sha256_empty(prompt: str) -> str | None:
+    """
+    Detect puzzles that ask for the SHA256 hash of an empty string, e.g.:
+      'sha256 of empty string'  /  'hash of ""'  /  'sha256 of nothing'
+    Returns the first 6 characters of the hex digest of b"".
+    """
+    if re.search(r"empty\s+string|sha256\s+of\s+['\"]?['\"]|hash\s+of\s+['\"]?['\"]|sha256\s+of\s+nothing", prompt, re.IGNORECASE):
+        h = hashlib.sha256(b"").hexdigest()
+        return h[:6]
+    return None
+
 def solve_sha256(prompt: str) -> str | None:
     """
     Detect patterns like:
       'sha256 of <value>'  /  'hash of <value>'  /  'sha256(<value>)'
     Returns the hex digest.
     """
+    # Delegate empty-string puzzles to the dedicated solver
+    if solve_sha256_empty(prompt) is not None:
+        return solve_sha256_empty(prompt)
+
     patterns = [
-        r"sha256\s+of\s+['\"]?([^'\"?\n]+?)['\"]?\s*\??$",
-        r"hash\s+of\s+['\"]?([^'\"?\n]+?)['\"]?\s*\??$",
+        r"sha256\s+of\s+['\"']?([^'\"'?\n]+?)['\"']?\s*\??$",
+        r"hash\s+of\s+['\"']?([^'\"'?\n]+?)['\"']?\s*\??$",
         r"sha256\(([^)]+)\)",
     ]
     for pat in patterns:
@@ -62,6 +77,7 @@ def solve_sha256(prompt: str) -> str | None:
             value = m.group(1).strip()
             return hashlib.sha256(value.encode()).hexdigest()
     return None
+
 
 def solve_base64(prompt: str) -> str | None:
     """
@@ -144,11 +160,13 @@ def solve_math(prompt: str) -> str | None:
 # ── Auto-detect and solve ─────────────────────────────────────────────────────
 
 SOLVERS = [
-    ("SHA256",   solve_sha256),
-    ("Base64",   solve_base64),
-    ("Reverse",  solve_reverse),
-    ("Math",     solve_math),
+    ("SHA256 Empty", solve_sha256_empty),
+    ("SHA256",       solve_sha256),
+    ("Base64",       solve_base64),
+    ("Reverse",      solve_reverse),
+    ("Math",         solve_math),
 ]
+
 
 def auto_solve(prompt: str) -> str | None:
     for name, solver in SOLVERS:
